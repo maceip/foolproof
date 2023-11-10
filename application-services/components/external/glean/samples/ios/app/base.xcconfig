@@ -1,0 +1,5 @@
+#include "../../../xcconfig/common.xcconfig"
+
+INFOPLIST_FILE = glean-sample-app/Info.plist
+PRODUCT_BUNDLE_IDENTIFIER = org.mozilla.glean-sample-app
+PRODUCT_NAME = Glean-Sample-App

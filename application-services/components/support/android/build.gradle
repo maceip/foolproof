@@ -1,0 +1,10 @@
+
+apply from: "$rootDir/build-scripts/component-common.gradle"
+apply from: "$rootDir/publish.gradle"
+
+dependencies {
+    implementation "net.java.dev.jna:jna:$jna_version@aar"
+    implementation "com.google.protobuf:protobuf-javalite:$protobuf_version"
+}
+
+ext.configurePublish()

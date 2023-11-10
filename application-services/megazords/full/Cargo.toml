@@ -1,0 +1,28 @@
+[package]
+name = "megazord"
+version = "0.1.0"
+authors = ["application-services <application-services@mozilla.com>"]
+edition = "2021"
+license = "MPL-2.0"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+fxa-client = { path = "../../components/fxa-client" }
+logins = { path = "../../components/logins" }
+tabs = { path = "../../components/tabs/" }
+sync_manager = { path = "../../components/sync_manager/" }
+places = { path = "../../components/places" }
+push = { path = "../../components/push" }
+rc_log_ffi = { path = "../../components/rc_log" }
+remote_settings = { path = "../../components/remote_settings" }
+rust-log-forwarder = { path = "../../components/support/rust-log-forwarder" }
+viaduct = { path = "../../components/viaduct" }
+nimbus-sdk = { path = "../../components/nimbus" }
+autofill = { path = "../../components/autofill" }
+crashtest = { path = "../../components/crashtest" }
+error-support = { path = "../../components/support/error" }
+suggest = { path = "../../components/suggest" }
+
+lazy_static = "1.4"

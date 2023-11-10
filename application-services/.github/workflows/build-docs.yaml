@@ -1,0 +1,56 @@
+name: Build and Deploy
+on:   
+  schedule:
+    - cron: '0 1 * * *'
+  workflow_dispatch:
+jobs:
+  build-and-deploy-docs:
+    runs-on: ubuntu-latest
+    steps: 
+      - name: Get repository and install Rust dependencies
+        run: |
+          echo `env`
+          git init .
+          git remote add origin https://github.com/mozilla/application-services.git
+          git pull origin main
+          git submodule init
+          git submodule update --recursive
+          echo 'rust.targets=linux-x86-64' > local.properties
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          source $HOME/.cargo/env
+ 
+      - name: Build Dependencies
+        env: 
+          NSS_DIR: ${{ github.workspace }}/libs/desktop/linux-x86-64/nss
+          NSS_STATIC: 1 
+        run: |
+
+          git clone https://chromium.googlesource.com/external/gyp.git tools/gyp
+          cd tools/gyp
+          sudo python setup.py install
+          cd ../..
+          sudo apt-get install ninja-build zlib1g-dev tclsh python3
+          ./libs/verify-desktop-environment.sh
+      
+      - name: Build mdbook
+        env: 
+          NSS_DIR: ${{ github.workspace }}/libs/desktop/linux-x86-64/nss
+          NSS_STATIC: 1 
+        run: |
+          cargo install mdbook mdbook-mermaid mdbook-open-on-gh
+          ./tools/build-book.sh
+          
+      - name: Deploy
+        run: |
+          git config --local user.email "${{ github.actor }}@users.noreply.github.com"
+          git config --local user.name "${{ github.actor }}"
+          git config --local url."https://api:${{ github.token }}@github.com/".insteadOf "https://github.com/"
+          git config --local url."https://ssh:${{ github.token }}@github.com/".insteadOf "ssh://git@github.com/"
+          git config --local url."https://git:${{ github.token }}@github.com/".insteadOf "git@github.com:"
+          git checkout --orphan gh-pages
+          git --work-tree build/docs add --all
+          git --work-tree build/docs commit -m 'Deploy Docs'
+          git push origin HEAD:gh-pages --force
+          rm -r build/docs
+          git checkout -f main 
+          git branch -D gh-pages

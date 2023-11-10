@@ -1,0 +1,67 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+---
+trust-domain: app-services
+task-priority: highest
+
+taskgraph:
+  register: app_services_taskgraph:register
+  repositories:
+    appservices:
+      name: "Application Services"
+  decision-parameters: 'app_services_taskgraph:get_decision_parameters'
+
+workers:
+  aliases:
+    b-linux:
+      provisioner: 'app-services-{level}'
+      implementation: docker-worker
+      os: linux
+      worker-type: 'b-linux-gcp'
+    b-osx:
+      provisioner: releng-hardware
+      implementation: generic-worker
+      os: macosx
+      worker-type: applicationservices-b-{level}-osx1015
+    images:
+      provisioner: 'app-services-{level}'
+      implementation: docker-worker
+      os: linux
+      worker-type: 'images-gcp'
+    signing:
+      provisioner: scriptworker-k8s
+      implementation: scriptworker-signing
+      os: scriptworker
+      worker-type:
+        by-level:
+          "3": app-services-3-signing
+          default: app-services-t-signing
+    beetmover:
+      provisioner: scriptworker-k8s
+      implementation: scriptworker-beetmover
+      os: scriptworker
+      worker-type: 'app-services-{level}-beetmover'
+    shipit:
+      provisioner: scriptworker-k8s
+      implementation: scriptworker-shipit
+      os: scriptworker
+      worker-type: 'app-services-{level}-shipit'
+
+release-promotion:
+  flavors:
+    promote:
+      target-tasks-method: promote
+    ship:
+      target-tasks-method: ship
+  rebuild-kinds:
+    - docker-image
+    - fetch
+    - toolchain
+
+shipit:
+  product: App-services
+  scope-prefix: project:app-services:releng:ship-it
+
+scriptworker:
+  scope-prefix: project:mozilla:app-services:releng

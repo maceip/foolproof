@@ -1,0 +1,35 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+---
+loader: taskgraph.loader.transform:loader
+
+kind-dependencies:
+  - fetch
+
+transforms:
+  - app_services_taskgraph.transforms.worker:transforms
+  - app_services_taskgraph.transforms.toolchain:transforms
+  - taskgraph.transforms.job:transforms
+  - taskgraph.transforms.cached_tasks:transforms
+  - taskgraph.transforms.task:transforms
+
+task-defaults:
+  routes:
+    by-tasks-for:
+      github-push:
+        - notify.email.a-s-ci-failures@mozilla.com.on-failed
+      default: []
+  run:
+    using: toolchain-script
+  worker-type: b-linux
+  worker:
+    env: {}
+    max-run-time: 7200
+
+tasks-from:
+    - android.yml
+    - desktop.yml
+    - ios.yml
+    - resourcemonitor.yml
+    - rust.yml

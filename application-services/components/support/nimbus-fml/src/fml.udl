@@ -1,0 +1,116 @@
+namespace fml {};
+
+[Custom]
+typedef string JsonObject;
+[Custom]
+typedef string Url;
+[Custom]
+typedef string EmailAddress;
+
+[Error]
+enum FMLError {
+    "IOError", "JSONError", "YAMLError", "UrlError", "EmailError", "FetchError", "InvalidPath",
+    "TemplateProblem", "Fatal", "InternalError", "ValidationError", "TypeParsingError",
+    "InvalidChannelError", "FMLModuleError", "CliError", "ClientError", "InvalidFeatureError",
+    "FeatureValidationError",
+};
+
+dictionary MergedJsonWithErrors {
+    string json;
+    sequence<FMLError> errors;
+};
+
+dictionary FmlLoaderConfig {
+    string? cache;
+    record<DOMString, string> refs;
+    sequence<string> ref_files;
+};
+
+interface FmlClient {
+    // Constructs a new FmlClient object.
+    //
+    // Definitions of the parameters are as follows:
+    // - `manifest_path`: The path (relative to the current working directory) to the fml.yml that should be loaded.
+    // - `channel`: The channel that should be loaded for the manifest.
+    [Throws=FMLError]
+    constructor(string manifest, string channel);
+
+    [Name=new_with_ref, Throws=FMLError]
+    constructor(string manifest, string channel, string? ref_);
+
+    [Name=new_with_config, Throws=FMLError]
+    constructor(string manifest, string channel, FmlLoaderConfig config);
+
+    // Validates a supplied feature configuration. Returns true or an FMLError.
+    [Throws=FMLError]
+    boolean is_feature_valid(string feature_id, JsonObject value);
+
+    // Validates a supplied list of feature configurations. The valid configurations will be merged into the manifest's
+    // default feature JSON, and invalid configurations will be returned as a list of their respective errors.
+    [Throws=FMLError]
+    MergedJsonWithErrors merge(record<DOMString, JsonObject> feature_configs);
+
+    // Returns the default feature JSON for the loaded FML's selected channel.
+    [Throws=FMLError]
+    string get_default_json();
+
+    // Returns a list of feature ids that support coenrollment.
+    [Throws=FMLError]
+    sequence<string> get_coenrolling_feature_ids();
+
+    // Returns a list of feature ids.
+    sequence<string> get_feature_ids();
+
+    // Returns a description of the given feature.
+    // If no feature exists, returns None.
+    FmlFeatureDescriptor? get_feature_descriptor(string id);
+
+    // Returns a description of the given feature.
+    // If no feature exists, returns None.
+    sequence<FmlFeatureDescriptor> get_feature_descriptors();
+
+    FmlFeatureInspector? get_feature_inspector(string id);
+};
+
+dictionary FmlFeatureDescriptor {
+    string id;
+    string description;
+    boolean is_coenrolling;
+
+    /// Documentation for this feature.
+    sequence<DocumentationLink> documentation;
+    /// Email addresses of engineers and product owners who can answer questions about this feature
+    sequence<EmailAddress> contacts;
+    /// Where bugs can be filed on this feature
+    Url? meta_bug;
+    /// The Glean events produced by this feature.
+    sequence<Url> events;
+    /// A web based configurator to generate JSON for this feature.
+    Url? configurator;
+};
+
+/// A named document with a link to it
+dictionary DocumentationLink {
+    string name;
+    Url url;
+};
+
+interface FmlFeatureInspector {
+    // Parses the string and returns a list of errors.
+    // Current implementation will only return one error.
+    sequence<FmlEditorError>? get_errors(string src);
+
+    // Returns the default JSON for the feature for this channel.
+    [Throws=FMLError]
+    JsonObject get_default_json();
+};
+
+dictionary FmlEditorError {
+    string message;
+    // zero indexed line number for the error.
+    u32 line;
+    // zero indexed column number for the error.
+    u32 col;
+    // the text to highlight.
+    string? highlight;
+};

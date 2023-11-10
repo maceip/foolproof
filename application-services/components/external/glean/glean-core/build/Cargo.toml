@@ -1,0 +1,19 @@
+[package]
+name = "glean-build"
+version = "8.1.0"
+edition = "2021"
+description = "Glean SDK Rust build helper"
+repository = "https://github.com/mozilla/glean"
+readme = "README.md"
+license = "MPL-2.0"
+keywords = ["telemetry", "glean"]
+include = [
+  "/README.md",
+  "/LICENSE",
+  "/src",
+  "/Cargo.toml",
+]
+rust-version = "1.62"
+
+[dependencies]
+xshell-venv = "1.1.0"

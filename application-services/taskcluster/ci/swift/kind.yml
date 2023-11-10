@@ -1,0 +1,63 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+# ⚠️ If you add, rename or delete a task here, please also update .mergify.yml! ⚠️
+---
+loader: taskgraph.loader.transform:loader
+
+transforms:
+  - app_services_taskgraph.transforms.worker
+  - app_services_taskgraph.transforms.release_artifacts
+  - app_services_taskgraph.transforms.appservices
+  - taskgraph.transforms.job
+  - taskgraph.transforms.task
+
+kind-dependencies:
+  - fetch
+  - toolchain
+
+tasks:
+  build:
+    attributes:
+      run-on-pr-type: full-ci
+      resource-monitor: true
+      release-routes:
+        - index.project.{project}.v2.swift.{appservices_version}
+    needs-sccache: false # TODO: Bug 1623426 deal with this once we're in prod
+    run-on-tasks-for: [github-push, github-pull-request, cron]
+    description: Build and test (Swift)
+    scopes:
+      - project:releng:services/tooltool/api/download/internal
+    worker-type: b-osx
+    worker:
+      chain-of-trust: true
+      max-run-time: 1800
+    release-artifacts:
+      - swift-components.tar.xz
+      - MozillaRustComponents.xcframework.zip
+      - FocusRustComponents.xcframework.zip
+      # TODO: re-enable once we get tests working
+      # - raw_xcodetest.log
+    run:
+      pre-commands:
+        - ["source", "taskcluster/scripts/setup-mac-worker.sh"]
+        - ["source", "taskcluster/scripts/toolchain/setup-fetched-rust-toolchain.sh"]
+        - ["source", "taskcluster/scripts/toolchain/setup-libs-ios.sh"]
+      commands:
+        - ["taskcluster/scripts/build-and-test-swift.sh"]
+        - [ "pushd", "build/" ]
+        - [ "tar", "acf", "swift-components.tar.xz", "swift-components" ]
+        - [ "popd"]
+        - [ "mv", "build/swift-components.tar.xz", "artifacts/"]
+        - [ "pwd"]
+        - [ "mv", "artifacts", "../../"]
+      using: run-commands
+      run-task-command: ["/usr/local/bin/python3", "run-task"]
+      use-caches: true
+    fetches:
+      toolchain:
+        - rust-osx
+        - libs-ios
+      fetch:
+        - swiftformat

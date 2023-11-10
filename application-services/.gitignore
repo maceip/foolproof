@@ -1,0 +1,72 @@
+website/build
+target
+credentials.json
+*-engine.json
+*.db
+.*.swp
+*.db-shm
+*.db-wal
+
+# Android stuff.
+*.iml
+.gradle
+local.properties
+.idea
+build
+.DS_Store
+captures
+.externalNativeBuild
+.lastAutoPublishContentsHash
+
+# iOS stuff.
+xcuserdata
+
+# Protobuf Swift
+*.pb.swift
+
+# UniFFI generated artifacts
+components/**/ios/Generated
+
+# We don't car about Cargo.lock for our tests.
+testing/sync-test/Cargo.lock
+
+# XCFramework artifact
+megazords/ios-rust/MozillaRustComponents.xcframework*
+megazords/ios-rust/focus/FocusRustComponents.xcframework*
+
+
+# Glean generated artifacts
+megazords/ios-rust/MozillaTestServices/MozillaTestServices/Generated/Metrics.swift
+megazords/ios-rust/MozillaTestServices/.venv
+
+# Carthage generated artifacts
+# We no longer use Carthage, but those
+# artifacts may still live in local envirionments.
+Carthage
+MozillaAppServices.framework.zip
+
+# Xcode generated logs
+raw_xcodebuild.log
+raw_xcodetest.log
+
+# Generated debug symbols
+crashreporter-symbols*
+automation/symbols-generation/bin/
+
+# Python
+__pycache__
+*.py[cod]
+.Python
+
+# Generated mdbook documentation files
+build/docs/*
+docs/book
+
+# Generated rustdocs
+docs/rust-docs
+
+# UniFFI files
+cirrus.py
+fml.py
+*.dylib
+*.so

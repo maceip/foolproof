@@ -1,0 +1,42 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+---
+loader: taskgraph.loader.transform:loader
+
+transforms:
+    - taskgraph.transforms.fetch:transforms
+    - taskgraph.transforms.job:transforms
+    - taskgraph.transforms.task:transforms
+
+task-defaults:
+    docker-image: {in-tree: linux}
+
+tasks:
+    go-1.14.4:
+        description: Golang 1.14.4 build tools
+        fetch:
+            type: static-url
+            url: https://dl.google.com/go/go1.14.4.linux-amd64.tar.gz
+            sha256: aed845e4185a0b2a3c3d5e1d0a35491702c55889192bb9c30e67a3de6849c067
+            size: 123711003
+    resource-monitor:
+        description: Resource monitoring tools
+        fetch:
+            type: git
+            repo: https://github.com/mozilla-releng/resource-monitor
+            revision: 17371502a3b04579375d707844e6bf08dee95d22
+    swiftformat:
+        description: swiftformat
+        fetch:
+            type: static-url
+            url: https://github.com/nicklockwood/SwiftFormat/releases/download/0.51.9/swiftformat.zip
+            sha256: f5db4d7e1cc0e0daf77266983bad5931fb95f6ffcecf08fa1aa19fdbb7c53fc4
+            size: 1656725
+    nss-artifact:
+        description: fetches the built NSS artifacts from NSS CI
+        fetch:
+            type: static-url
+            url: https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/tzaXIqmxRLm3rGDDG0VA9w/runs/0/artifacts/public/dist.tar.bz2
+            sha256: 2e3aee6adc0c0110bcc51aea4a96b7fb57a00124718e064f38c5a29a6110b007
+            size: 22734643

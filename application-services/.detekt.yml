@@ -1,0 +1,28 @@
+complexity:
+  LongMethod:
+    active: false
+  TooManyFunctions:
+    active: false
+
+style:
+  ForbiddenComment:
+    active: false
+  MagicNumber:
+    active: false
+  MaxLineLength:
+    active: false
+  ProtectedMemberInFinalClass:
+    active: false
+  UnusedPrivateMember:
+    active: false
+  WildcardImport:
+    excludeImports:
+      - com.example.app.nimbus.*
+      - com.example.lib.nimbus.*
+      - com.example.sublib.nimbus.*
+
+exceptions:
+  RethrowCaughtException:
+    active: false
+  SwallowedException:
+    active: false

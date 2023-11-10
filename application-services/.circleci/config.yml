@@ -1,0 +1,349 @@
+version: 2.1
+
+# ⚠️ If you add, rename or delete a job here, please also update .mergify.yml! ⚠️
+
+commands:
+  # Our policy for updating rust versions is at https://github.com/mozilla/application-services/tree/main/docs/design/rust-versions.md
+  # See also rust-toolchain in the root of this repo, which is used to specify our official target version.
+  setup-rust-target-version:
+    steps:
+      # So long as this is executed after the checkout it will use the version specified in rust-toolchain.yaml
+      - run: rustup update
+  # Our minimum supported rust version is specified here.
+  setup-rust-min-version:
+    steps:
+      # https://searchfox.org/mozilla-central/source/python/mozboot/mozboot/util.py#26
+      - run: rustup override set 1.65.0
+
+  full-checkout:
+    steps:
+      - checkout
+      - run:
+          name: "Pull git submodules"
+          command: git submodule update --init
+  setup-sccache:
+    steps:
+      - run:
+          name: Install sccache
+          command: |
+            SCCACHE_VERSION=v0.2.15
+            if [ "$(uname)" == "Darwin" ]; then
+              SCCACHE="sccache-${SCCACHE_VERSION}-x86_64-apple-darwin"
+            else
+              SCCACHE="sccache-${SCCACHE_VERSION}-x86_64-unknown-linux-musl"
+            fi
+            SCCACHE_ARCHIVE="${SCCACHE}.tar.gz"
+            SCCACHE_URL="https://github.com/mozilla/sccache/releases/download/${SCCACHE_VERSION}/${SCCACHE_ARCHIVE}"
+            curl -sfSL --retry 5 --retry-delay 10 "${SCCACHE_URL}" | sudo tar -xz --strip-components=1 -C /usr/local/bin/ "${SCCACHE}/sccache"
+            sudo chmod +x /usr/local/bin/sccache
+            # Do not forget to re-export these variables in xc-universal-binary.sh!
+            echo 'export "RUSTC_WRAPPER"="sccache"' >> $BASH_ENV
+            echo 'export "SCCACHE_IDLE_TIMEOUT"="1200"' >> $BASH_ENV
+            echo 'export "SCCACHE_CACHE_SIZE"="2G"' >> $BASH_ENV
+            echo 'export "SCCACHE_ERROR_LOG"="/tmp/sccache.log"' >> $BASH_ENV
+            echo 'export "RUST_LOG"="sccache=info"' >> $BASH_ENV
+            # Incremental compilation isn't supported by sccache.
+            echo 'export "CARGO_INCREMENTAL"="0"' >> $BASH_ENV
+      # Run in a different shell to source $BASH_ENV modified above.
+      - run: |
+          sccache --version
+          sccache --zero-stats
+  install-grcov:
+    steps:
+      - run:
+          name: Install grcov
+          command: |
+            cargo install --locked grcov@0.8.19
+      # Run in a different shell to source $BASH_ENV
+      - run: |
+          grcov --version
+  install-mdbook:
+    steps:
+      - run:
+          name: Install mdBook
+          command: |
+            mkdir -p $HOME/.bin
+            pushd $HOME/.bin
+            curl -sfSL --retry 5 --retry-delay 10 https://github.com/rust-lang-nursery/mdBook/releases/download/v0.2.1/mdbook-v0.2.1-x86_64-unknown-linux-gnu.tar.gz | tar xz
+            echo 'export PATH="$HOME/.bin:$PATH"' >> $BASH_ENV
+            popd
+  install-rust:
+    steps:
+      - run:
+          name: Install Rust
+          command: |
+            RUSTUP_PLATFORM=x86_64-apple-darwin
+            RUSTUP_VERSION=1.24.1
+            RUSTUP_SHA256=d53e8000c8663e1704a2071f7042be917bc90cbc89c11e11c5dfdcb35b84c00e
+            curl -sfSL --retry 5 --retry-delay 10 -O "https://static.rust-lang.org/rustup/archive/${RUSTUP_VERSION}/${RUSTUP_PLATFORM}/rustup-init"
+            echo "${RUSTUP_SHA256} *rustup-init" | shasum -a 256 -c -
+            chmod +x rustup-init
+            ./rustup-init -y --no-modify-path
+            rm rustup-init
+            echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> $BASH_ENV
+
+  build-libs:
+    parameters:
+      platform:
+        type: string
+    steps:
+      - run:
+          name: Compute libs/ checksum
+          command: echo "$(git rev-parse HEAD:libs)" >| libs_sha
+      - restore_cache:
+          name: Restore libs/ cache
+          key: libs-cache-{{ arch }}-{{ checksum "libs_sha" }}
+      - run:
+          name: Build libs
+          command: pushd libs && ./build-all.sh <<parameters.platform>> && popd
+      - save_cache:
+          name: Save libs/ cache
+          key: libs-cache-{{ arch }}-{{ checksum "libs_sha" }}
+          paths:
+            - libs/<<parameters.platform>>
+  build-desktop-libs:
+    steps:
+      - run: sudo apt-get update
+      - run: sudo apt-get install python tcl
+      - run: sudo apt-get install python3-venv
+      - run: sudo apt-get install libclang-dev
+      - run:
+          name: Install NSS build system dependencies
+          command: sudo apt-get install ninja-build gyp zlib1g-dev pip
+      - build-libs:
+          platform: desktop
+  build-ios-libs:
+    steps:
+      # this is a problem with Mac OSX?
+      - run: pip install --ignore-installed six
+      - run:
+          name: Install NSS build system dependencies
+          command: |
+            brew install ninja
+            pushd ..
+            git clone https://chromium.googlesource.com/external/gyp.git
+            pushd gyp
+            python3 setup.py install
+            popd
+            popd
+            echo 'export PATH=/usr/local/opt/python@3.9/Frameworks/Python.framework/Versions/3.9/bin:$PATH' >> $BASH_ENV
+            ln -s /usr/local/opt/python@3.9/Frameworks/Python.framework/Versions/3.9/bin/python3 /usr/local/bin/python
+      - build-libs:
+          platform: ios
+  test-setup:
+    steps:
+      - build-desktop-libs
+      - setup-rust-target-version
+      - setup-sccache
+      # clipboard crate depends on some x11 libs.
+      - run: sudo apt-get install libxcb-shape0-dev libxcb-xfixes0-dev pip
+      - run: |
+          echo 'export NSS_STATIC=1' >> $BASH_ENV
+          echo 'export NSS_DIR=$(pwd)/libs/desktop/linux-x86-64/nss' >> $BASH_ENV
+          echo 'export RUST_LOG=trace' >> $BASH_ENV
+      - run: pip install pytest
+      - run:
+          name: Verify the build environment
+          command: ./libs/verify-desktop-environment.sh
+  run-tests:
+    steps:
+      - run: automation/tests.py rust-tests
+      - run: automation/tests.py python-tests
+      - run: automation/tests.py nss-bindings
+  restore-sccache-cache:
+    steps:
+      - restore_cache:
+          name: Restore sccache cache
+          keys:
+          # We have multiple keys to increase the chance of a cache hit
+          # in case the Cargo.lock is updated, we still want to retrieve
+          # some cache
+            - sccache-cache-stable-{{ arch }}-{{ .Environment.CIRCLE_JOB }}-{{ checksum "Cargo.lock" }}
+            - sccache-cache-stable-{{ arch }}-{{ .Environment.CIRCLE_JOB }}
+            - sccache-cache-stable-{{ arch }}
+
+  save-sccache-cache:
+    parameters:
+      path:
+        type: string
+        default: "~/.cache/sccache"
+    steps:
+      - save_cache:
+          name: Save sccache cache
+          # We only upload a new cache if our Cargo.lock changed
+          # otherwise, we update the exact same key
+          key: sccache-cache-stable-{{ arch }}-{{ .Environment.CIRCLE_JOB }}-{{ checksum "Cargo.lock" }}
+          paths:
+            - <<parameters.path>>
+      - sccache-stats-and-logs
+  sccache-stats-and-logs:
+    steps:
+      - run: sccache --show-stats
+      - store_artifacts:
+          path: /tmp/sccache.log
+          destination: logs/sccache.log
+  setup-ios-environment:
+    steps:
+      - run:
+          name: Toggle brew auto-updates
+          command: |
+            if [ -z "${CIRCLE_TAG}" ]; then
+              # On non-release builds do not update brew (takes ages).
+              echo 'export HOMEBREW_NO_AUTO_UPDATE=1' >> $BASH_ENV
+            fi
+      - build-ios-libs
+      - run:
+          name: Verify the build environment
+          command: ./libs/verify-ios-ci-environment.sh
+
+executors:
+  # Where possible we want to run jobs using docker, because it's cheaper.
+  # Unfortunately some of our jobs can only run successfully on macos.
+  docker:
+    docker:
+      - image: cimg/rust:1.53.0
+  macos:
+    macos:
+      xcode: 14.3.1
+    resource_class: macos.x86.medium.gen2
+
+jobs:
+  Check Swift formatting:
+    executor: macos
+    steps:
+      - full-checkout
+      - run: brew install swiftlint swiftformat
+      - run: ./automation/tests.py swiftlint
+      - run: ./automation/tests.py swiftformat
+  Check Rust formatting:
+    executor: docker
+    resource_class: small
+    steps:
+      - full-checkout
+      - setup-rust-target-version
+      - run: ./automation/tests.py rust-fmt
+  Lint Rust with clippy:
+    executor: docker
+    steps:
+      - full-checkout
+      - restore-sccache-cache
+      - test-setup
+      - run: ./automation/tests.py rust-clippy
+      - save-sccache-cache
+  Generate code coverage:
+    executor: docker
+    resource_class: large
+    steps:
+      - full-checkout
+      - test-setup
+      - install-grcov
+      # Test coverage support in Rust has been evolving rapidly, use nightly
+      # in the hope of getting the best support/features on that front.
+      - run: RUSTUP_TOOLCHAIN="nightly" bash ./automation/emit_coverage_info.sh
+      - run:
+          name: Compile coverage
+          command: grcov ./target/debug/ -s . -t lcov --llvm --ignore-not-existing --ignore "target/*" --ignore "/*" -o lcov.info
+      - run:
+          name: Upload to codecov.io
+          command: ./automation/upload-to-codecov.sh
+  Check Protobuf files are up-to-date:
+    executor: docker
+    resource_class: small
+    steps:
+      - full-checkout
+      - run: sudo apt-get update
+      - run: sudo apt-get install protobuf-compiler
+      - run: ./automation/check_protobuf_files_current.py
+  Lint Bash scripts:
+    docker:
+      - image: koalaman/shellcheck-alpine:stable
+    resource_class: small
+    steps:
+      - checkout
+      - run:
+          name: Lint Bash scripts with shellcheck
+          command: sh automation/lint_bash_scripts.sh
+  Rust tests:
+    executor: docker
+    # We have to use a machine with more RAM for tests so we don't run out of memory.
+    resource_class: large
+    steps:
+      - full-checkout
+      - restore-sccache-cache
+      - test-setup
+      - run-tests
+      - save-sccache-cache
+  Rust tests - min supported rust version:
+    executor: docker
+    # We have to use a machine with more RAM for tests so we don't run out of memory.
+    resource_class: large
+    steps:
+      - full-checkout
+      - restore-sccache-cache
+      - test-setup
+      - setup-rust-min-version
+      # tests.py doesn't support skipping tests, and we need to skip the systests on this rust version.
+      # It's not in the default workspace members, so just `cargo test` is OK.
+      - run: ./automation/tests.py rust-min-version-tests
+      - save-sccache-cache
+
+  iOS test:
+    executor: macos
+    steps:
+      - full-checkout
+      - restore-sccache-cache
+      - install-rust
+      - setup-rust-target-version
+      - setup-ios-environment
+      - setup-sccache
+      - run:
+          name: Run XCode tests
+          command: ./automation/tests.py ios-tests
+      - store_artifacts:
+          path: raw_xcodetest.log
+          destination: logs/raw_xcodetest.log
+      - save-sccache-cache:
+          path: "~/Library/Caches/Mozilla.sccache"
+      - store_artifacts:
+          name: Store XCFramework bundle in workspace
+          path: megazords/ios-rust/MozillaRustComponents.xcframework.zip
+          destination: dist/MozillaRustComponents.xcframework.zip
+      - run:
+          name: "XCFramework bundle checksum"
+          command: |
+            shasum -a 256 ./megazords/ios-rust/MozillaRustComponents.xcframework.zip
+            echo "Use the above checksum to depend on MozillaRustComponents.xcframework.zip as a Swift Package binary target"
+      - persist_to_workspace:
+          root: .
+          paths:
+            - megazords/ios-rust/MozillaRustComponents.xcframework.zip
+
+workflows:
+  version: 2
+  swiftlint:
+    jobs:
+      - Check Swift formatting
+  check-formatting:
+    jobs:
+      - Check Rust formatting
+  clippy:
+    jobs:
+      - Lint Rust with clippy
+  check-protobuf-uptodate:
+    jobs:
+      - Check Protobuf files are up-to-date
+  bash-lint:
+    jobs:
+      - Lint Bash scripts
+  run-tests:
+    jobs:
+      - Rust tests
+  run-tests-min-supported-version:
+    jobs:
+      - Rust tests - min supported rust version
+  coverage:
+    jobs:
+      - Generate code coverage
+  ios-test:
+    jobs:
+      - iOS test

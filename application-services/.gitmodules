@@ -1,0 +1,3 @@
+[submodule "components/external/glean"]
+	path = components/external/glean
+	url = https://github.com/mozilla/glean

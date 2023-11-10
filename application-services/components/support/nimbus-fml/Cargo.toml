@@ -1,0 +1,41 @@
+[package]
+name = "nimbus-fml"
+version = "0.1.0"
+edition = "2021"
+authors = ["Nimbus SDK Engineering"]
+license = "MPL-2.0"
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+client-lib = []
+uniffi-bindings = ["client-lib", "dep:uniffi"]
+
+[lib]
+name = "nimbus_fml"
+
+[dependencies]
+clap = {version = "2.33.0", features = ["yaml"]}
+anyhow = "1.0.44"
+serde_json = "1"
+serde_yaml = "0.8.21"
+serde = { version = "1.0", features = ["derive"] }
+thiserror = "1.0.29"
+askama = "0.12"
+textwrap = "0.14.2"
+heck = "0.3.3"
+unicode-segmentation = "1.8.0"
+url = { version = "2", features = ["serde"] }
+reqwest = { version = "0.11", features = ["blocking", "native-tls-vendored"] }
+glob = "0.3.0"
+uniffi = { version = "0.24.1", optional = true }
+cfg-if = "1.0.0"
+console = "0.15.5"
+lazy_static = "1.4"
+email_address = { version = "0.2.4", features = ["serde"] }
+
+[build-dependencies]
+uniffi = { version = "0.24.1", features = ["build"], optional = true }
+
+[dev-dependencies]
+tempfile = "3"
+jsonschema = { version = "0.13", default-features = false }

@@ -1,0 +1,57 @@
+docs/*/book
+docs/*/shared/
+docs/user/appendix/changelog.md
+docs/user/appendix/changelog/sdk.md
+docs/user/appendix/changelog/js.md
+target
+
+# Android stuff.
+*.iml
+.gradle
+local.properties
+.idea
+build
+captures
+.externalNativeBuild
+.lastAutoPublishContentsHash
+
+# Include glean-build crate again
+!/glean-core/build
+
+# iOS stuff.
+xcuserdata
+raw_xcode*log
+/glean-core/ios/Glean/Generated
+/glean-core/ios/Pipfile
+/glean-core/ios/Pipfile.lock
+/glean-core/ios/.venv
+
+# OS stuff
+.DS_Store
+*.dSYM
+
+# Python stuff
+*.egg-info
+dist/
+.venv*/
+
+# Wine stuff
+winpython/
+
+samples/ios/app/.venv/
+samples/python/.venv*/
+samples/python/data
+.mypy_cache/
+.coverage
+.coverage*
+htmlcov/
+*.log
+
+glean-core/python/glean/_uniffi
+__pycache__
+*.py[cod]
+.Python
+
+# UniFFI generated code
+glean-core/uniffi/src/glean_core.uniffi.rs
+glean-core/uniffi/src/uniffi

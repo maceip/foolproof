@@ -1,0 +1,232 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+// This is based off:
+// https://github.com/mozilla/application-services/blob/84e077d1534dc287bbd472da658ce22eea5af032/build.gradle
+
+buildscript {
+    // Define the version of the used dependencies in a single place, to ease
+    // changing them. Please note that, for using in Android-Components, the
+    // versions below must match the ones in that repository.
+    ext.versions = [
+        android_gradle_plugin: '8.0.2',
+        coroutines: '1.7.2',
+        jna: '5.13.0',
+        junit: '4.13.2',
+        mockito: '5.5.0',
+        mockwebserver: '4.11.0', // This is different than a-c, but we're fine, it's only tests.
+        kotlin: '1.8.21',
+        robolectric: '4.10.3',
+        rust_android_plugin: '0.9.3',
+
+        // Android X dependencies
+        androidx_annotation: '1.7.0',
+        androidx_appcompat: '1.6.1',
+        androidx_browser: '1.6.0',
+        androidx_core: '1.12.0',
+        androidx_espresso: '3.5.1',
+        androidx_junit: '1.1.5',
+        androidx_lifecycle: '2.6.2',
+        androidx_test: '1.5.0',
+        androidx_work: '2.7.1',
+        androidx_uiautomator: '2.2.0',
+    ]
+
+    ext.build = [
+        ndkVersion: "25.2.9519653", // Keep it in sync in TC Dockerfile.
+        compileSdkVersion: 34,
+        targetSdkVersion: 33,
+        minSdkVersion: 21,
+        jvmTargetCompatibility: 17,
+    ]
+
+    repositories {
+        google()
+        mavenCentral()
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
+    }
+    dependencies {
+        classpath "com.android.tools.build:gradle:$versions.android_gradle_plugin"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$versions.kotlin"
+
+        classpath "org.mozilla.rust-android-gradle:plugin:$versions.rust_android_plugin"
+
+        // Yes, this is unusual.  We want to access some host-specific
+        // computation at build time.
+        classpath "net.java.dev.jna:jna:$versions.jna"
+
+        // NOTE: Do not place your application dependencies here; they belong
+        // in the individual module build.gradle files
+    }
+}
+
+plugins {
+    id("io.gitlab.arturbosch.detekt").version("1.23.1")
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        maven {
+            url "https://maven.mozilla.org/maven2"
+        }
+    }
+}
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}
+
+// Avoid Gradle namespace collision.  This is here, rather than in `buildscript
+// { ... }`, to avoid issues with importing.
+import com.sun.jna.Platform as DefaultPlatform
+
+//  application-services has hooks to download external dependencies here. This
+//  has been removed since `glean-core` doesn't have any external dependencies for now.
+
+Properties localProperties = null
+if (file('local.properties').canRead()) {
+    localProperties = new Properties()
+    localProperties.load(file('local.properties').newDataInputStream())
+    logger.lifecycle('Local configuration: loaded local.properties')
+}
+
+// Default to debug builds, but force release builds on CI
+ext.cargoProfile = "debug"
+// Additionally, we require `--locked` in CI, but not for local builds.
+// Unlike the above, this can't be overridden by `local.properties` (mainly
+// because doing so seems pointless, not for any security reason)
+// For debug builds we also enable the `env_logger`,
+// so that local testing can get some output
+ext.extraCargoBuildArguments = ["--features=enable_env_logger"]
+
+if (System.getenv("CI")) {
+    // Note: CI can still override this (and does for PRs), this
+    // is just the default
+    ext.cargoProfile = "release"
+    ext.extraCargoBuildArguments = ["--locked"]
+}
+
+// The Cargo targets to invoke.  The mapping from short name to target
+// triple is defined by the `rust-android-gradle` plugin.
+// They can be overwritten in `local.properties` by the `rust.targets`
+// attribute.
+ext.rustTargets = [
+    'arm',
+    'arm64',
+    'x86_64',
+    'x86',
+]
+
+// Generate libs for our current platform so we can run unit tests.
+switch (DefaultPlatform.RESOURCE_PREFIX) {
+    case 'darwin':
+    case 'darwin-x86-64':
+        ext.nativeRustTarget = 'darwin-x86-64'
+        break
+    case 'darwin-aarch64':
+        ext.nativeRustTarget = 'darwin-aarch64'
+        break
+    case 'linux-x86-64':
+        ext.nativeRustTarget = 'linux-x86-64'
+        break
+    case 'win32-x86-64':
+        ext.nativeRustTarget = 'win32-x86-64-gnu'
+        break
+}
+ext.rustTargets += ext.nativeRustTarget
+
+subprojects {
+    apply plugin: 'maven-publish'
+
+
+    // Kotlin settings applicable to all modules.
+    afterEvaluate {
+        if (it.hasProperty('android')) {
+            android {
+                // This shouldn't be needed anymore with AGP 8.1.0+
+                // https://kotlinlang.org/docs/gradle-configure-project.html#gradle-java-toolchains-support
+                compileOptions {
+                    sourceCompatibility rootProject.ext.build.jvmTargetCompatibility
+                    targetCompatibility rootProject.ext.build.jvmTargetCompatibility
+                }
+            }
+        }
+        tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
+            kotlinOptions.allWarningsAsErrors = true
+            kotlin.jvmToolchain(rootProject.ext.build.jvmTargetCompatibility)
+        }
+    }
+
+    // This allows to invoke Gradle like `./gradlew publishToRootProjectBuildDir` (equivalent to
+    // `./gradlew publish`) and also `./gradlew publishToProjectBuildDir`.
+    publishing {
+        repositories {
+            maven {
+                name = "rootProjectBuildDir"
+                url = "file://${project.rootProject.buildDir}/maven"
+            }
+            maven {
+                name = "projectBuildDir"
+                url = "file://${project.buildDir}/maven"
+            }
+        }
+    }
+}
+
+detekt {
+    input = files("${projectDir}/glean-core", "${projectDir}/samples/android", "buildSrc")
+    config = files("${projectDir}/.detekt.yml")
+    buildUponDefaultConfig = true
+    reports {
+        xml.enabled = false
+    }
+}
+
+tasks.withType(io.gitlab.arturbosch.detekt.Detekt).configureEach {
+    exclude("**/test/**")
+    exclude("**/resources/**")
+    exclude("**/tmp/**")
+    exclude("**/build/**")
+}
+
+configurations {
+    ktlint
+}
+
+dependencies {
+    ktlint("com.pinterest:ktlint:0.50.0") {
+        attributes {
+            attribute(Bundling.BUNDLING_ATTRIBUTE, getObjects().named(Bundling, Bundling.EXTERNAL))
+        }
+    }
+}
+
+task ktlint(type: JavaExec, group: "verification") {
+    description = "Check Kotlin code style."
+    classpath = configurations.ktlint
+    mainClass.set("com.pinterest.ktlint.Main")
+    args "${projectDir}/glean-core/**/*.kt", "${projectDir}/samples/android/**/*.kt", "buildSrc/**/*.kt", "!**/build/**"
+}
+
+task ktlintFormat(type: JavaExec, group: "formatting") {
+    description = "Fix Kotlin code style deviations."
+    classpath = configurations.ktlint
+    mainClass.set("com.pinterest.ktlint.Main")
+    args "-F", "${projectDir}/glean-core/**/*.kt", "${projectDir}/samples/android/**/*.kt", "buildSrc/**/*.kt", "!**/build/**"
+    jvmArgs("--add-opens", "java.base/java.lang=ALL-UNNAMED") // workaround for java.lang.ExceptionInInitializerError
+}
+
+// Extremely unsophisticated way to publish a local development version while hiding implementation details.
+//
+// This shells out to a python script that tries to detect whether the working directory has changed since the last
+// time it was run, and it so then it shells out to `./gradlew publishToMavenLocal -Plocal=<timestamp>` to publish
+// a new version of of the code with an auto-incrementing version number.
+task autoPublishForLocalDevelopment(type: Exec) {
+  commandLine "./build-scripts/publish_to_maven_local_if_modified.py"
+}

@@ -1,0 +1,138 @@
+groupId: org.mozilla.appservices
+projects:
+  autofill:
+    path: components/autofill/android
+    artifactId: autofill
+    publications:
+    - name: autofill
+      type: aar
+    description: Addresses and Credit Cards autofill.
+  crashtest:
+    path: components/crashtest/android
+    artifactId: crashtest
+    publications:
+    - name: crashtest
+      type: aar
+    description: Helper APIs to trigger an application crash.
+  errorsupport:
+    path: components/support/error/android
+    artifactId: errorsupport
+    publications:
+    - name: errorsupport
+      type: aar
+    description: Application services error handling
+  fxaclient:
+    path: components/fxa-client/android
+    artifactId: fxaclient
+    publications:
+    - name: fxaclient
+      type: aar
+    description: Firefox Accounts client.
+  logins:
+    path: components/logins/android
+    artifactId: logins
+    publications:
+    - name: logins
+      type: aar
+    description: Sync 1.5 logins implementation.
+  places:
+    path: components/places/android
+    artifactId: places
+    publications:
+    - name: places
+      type: aar
+    description: Low level places storage implementation.
+  remotesettings:
+    path: components/remote_settings/android
+    artifactId: remotesettings
+    publications:
+    - name: remotesettings
+      type: aar
+    description: A Remote Settings client intended for the application layer.
+  rustlog:
+    path: components/rc_log/android
+    artifactId: rustlog
+    publications:
+    - name: rustlog
+      type: aar
+    description: Android hook into the log crate.
+  rust-log-forwarder:
+    path: components/support/rust-log-forwarder/android
+    artifactId: rust-log-forwarder
+    publications:
+    - name: rust-log-forwarder
+      type: aar
+    description: Forward logs from Rust
+  httpconfig:
+    path: components/viaduct/android
+    artifactId: httpconfig
+    publications:
+    - name: httpconfig
+      type: aar
+    description: Component allowing the configuration of Rust HTTP stack.
+  native-support:
+    path: components/support/android
+    artifactId: native-support
+    publications:
+    - name: native-support
+      type: aar
+    description: Shared native code utilities for rust component kotlin.
+  push:
+    path: components/push/android
+    artifactId: push
+    publications:
+    - name: push
+      type: aar
+    description: Low level WebPush handler implementation.
+  sync15:
+    path: components/sync15/android
+    artifactId: sync15
+    publications:
+    - name: sync15
+      type: aar
+    description: Shared Sync types for Kotlin.
+  syncmanager:
+    path: components/sync_manager/android
+    artifactId: syncmanager
+    publications:
+    - name: syncmanager
+      type: aar
+    description: Sync manager implementation
+  tabs:
+    path: components/tabs/android
+    artifactId: tabs
+    publications:
+    - name: tabs
+      type: aar
+    description: Sync 1.5 remote tabs implementation.
+  nimbus:
+    path: components/nimbus/android
+    artifactId: nimbus
+    publications:
+    - name: nimbus
+      type: aar
+    description: The Nimbus SDK, compiled to work with the Application Services full-megazord.
+  suggest:
+    path: components/suggest/android
+    artifactId: suggest
+    publications:
+    - name: suggest
+      type: aar
+    description: Manages sponsored and web suggestions for Firefox Suggest.
+  full-megazord:
+    uploadSymbols: true
+    path: megazords/full/android
+    artifactId: full-megazord
+    publications:
+    - name: full-megazord
+      type: aar
+    - name: full-megazord-forUnitTests
+      type: jar
+    description: Megazord containing all features
+  tooling-nimbus-gradle:
+    path: tools/nimbus-gradle-plugin
+    artifactId: tooling-nimbus-gradle
+    description: A Gradle plugin to generate code for the Nimbus Feature API.
+    publications:
+    - name: tooling-nimbus-gradle
+      type: jar

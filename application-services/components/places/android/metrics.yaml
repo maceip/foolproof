@@ -1,0 +1,228 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+# This file defines the metrics that will be gathered for the "places"
+# storage component.
+# These are emitted for all users of the component.  Additional metrics
+# specific to the *syncing* of places are defined in a separate "sync_ping"
+# package.
+#
+# Changes to these metrics require data review, which should take into
+# consideration
+# the following known consumers of the places component Android bindings:
+#
+#  * Fenix for Andriod
+
+---
+$schema: moz://mozilla.org/schemas/glean/metrics/2-0-0
+
+places_manager:
+
+  read_query_count:
+    type: counter
+    description: >
+      The total number of read operations performed on the places store.
+      The count only includes operations triggered by the application, not
+      e.g. incidental reads performed as part of a sync. It is intended to
+      be used together with `read_query_error_count` to measure the overall
+      error rate of read operations on the places store.
+    bugs:
+      - https://github.com/mozilla/application-services/issues/2300
+      - https://github.com/mozilla/application-services/issues/2299
+    data_reviews:
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1607621
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1649044
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1694316
+    data_sensitivity:
+      - interaction
+    notification_emails:
+      - mhammond@mozilla.com
+      - synced-client-integrations@mozilla.com
+    expires: "never"
+
+  read_query_error_count:
+    type: labeled_counter
+    description: >
+      The total number of errors encountered during read operations on the
+      places store, labeled by type.
+      It is intended to be used together with `read_query_count` to measure
+      the overall error rate of read operations on the places store.
+    labels:
+      - url_parse_failed
+      - operation_interrupted
+    bugs:
+      - https://github.com/mozilla/application-services/issues/2300
+      - https://github.com/mozilla/application-services/issues/2299
+    data_reviews:
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1607621
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1649044
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1694316
+    data_sensitivity:
+      - interaction
+    notification_emails:
+      - mhammond@mozilla.com
+      - synced-client-integrations@mozilla.com
+    expires: "never"
+
+  write_query_count:
+    type: counter
+    description: >
+      The total number of write operations performed on the places store.
+      The count only includes operations triggered by the application, not
+      e.g. incidental writes performed as part of a sync. It is intended to
+      be used together with `write_query_error_count` to measure the overall
+      error rate of write operations on the places store.
+    bugs:
+      - https://github.com/mozilla/application-services/issues/2300
+      - https://github.com/mozilla/application-services/issues/2299
+    data_reviews:
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1607621
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1649044
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1694316
+    data_sensitivity:
+      - interaction
+    notification_emails:
+      - mhammond@mozilla.com
+      - synced-client-integrations@mozilla.com
+    expires: "never"
+
+  write_query_error_count:
+    type: labeled_counter
+    description: >
+      The total number of errors encountered during write operations on the
+      places store, labeled by type.
+      It is intended to be used together with `write_query_count` to measure
+      the overall error rate of write operations on the places store.
+    labels:
+      - url_parse_failed
+      - invalid_bookmark_update
+      - invalid_parent
+      - unknown_bookmark_item
+      - url_too_long
+      - cannot_update_root
+      - json_parse_failed
+      - places_connection_busy
+      - operation_interrupted
+      - unexpected_places_exception
+      - bookmarks_corruption
+    bugs:
+      - https://github.com/mozilla/application-services/issues/2300
+      - https://github.com/mozilla/application-services/issues/2299
+    data_reviews:
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1607621
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1649044
+      - https://bugzilla.mozilla.org/show_bug.cgi?id=1694316
+      - https://github.com/mozilla/application-services/issues/4848
+    data_sensitivity:
+      - interaction
+    notification_emails:
+      - mhammond@mozilla.com
+      - synced-client-integrations@mozilla.com
+    expires: "never"
+
+  run_maintenance_time:
+    type: timing_distribution
+    description: Time taken to execute `run_maintenance()`
+    time_unit: millisecond
+    bugs:
+      - https://github.com/mozilla/application-services/issues/5115
+    data_reviews:
+      - https://github.com/mozilla/application-services/issues/5122
+      - https://github.com/mozilla/application-services/issues/5387
+      - https://github.com/mozilla/application-services/issues/5830
+    notification_emails:
+      - synced-client-integrations@mozilla.com
+      - bdk@mozilla.com
+    expires: "never"
+    data_sensitivity:
+      - technical
+
+  run_maintenance_prune_time:
+    type: timing_distribution
+    description: Time taken to execute `prune_older_visits()` inside
+      `run_maintenance()`
+    time_unit: millisecond
+    bugs:
+      - https://github.com/mozilla/application-services/issues/5246
+    data_reviews:
+      - https://github.com/mozilla/application-services/issues/5247
+      - https://github.com/mozilla/application-services/issues/5387
+      - https://github.com/mozilla/application-services/issues/5830
+    notification_emails:
+      - synced-client-integrations@mozilla.com
+      - bdk@mozilla.com
+    expires: "never"
+    data_sensitivity:
+      - technical
+
+  run_maintenance_vacuum_time:
+    type: timing_distribution
+    description: Time taken to execute `VACUUM` inside `run_maintenance()`
+    time_unit: millisecond
+    bugs:
+      - https://github.com/mozilla/application-services/issues/5246
+    data_reviews:
+      - https://github.com/mozilla/application-services/issues/5247
+      - https://github.com/mozilla/application-services/issues/5387
+      - https://github.com/mozilla/application-services/issues/5830
+    notification_emails:
+      - synced-client-integrations@mozilla.com
+      - bdk@mozilla.com
+    expires: "never"
+    data_sensitivity:
+      - technical
+
+  run_maintenance_optimize_time:
+    type: timing_distribution
+    description: Time taken to execute `PRAGMA optimize` inside
+      `run_maintenance()`
+    time_unit: millisecond
+    bugs:
+      - https://github.com/mozilla/application-services/issues/5246
+    data_reviews:
+      - https://github.com/mozilla/application-services/issues/5247
+      - https://github.com/mozilla/application-services/issues/5387
+      - https://github.com/mozilla/application-services/issues/5830
+    notification_emails:
+      - synced-client-integrations@mozilla.com
+      - bdk@mozilla.com
+    expires: "never"
+    data_sensitivity:
+      - technical
+
+  run_maintenance_chk_pnt_time:
+    type: timing_distribution
+    description: Time taken to execute `PRAGMA_CHECKPOINT` inside
+      `run_maintenance()`
+    time_unit: millisecond
+    bugs:
+      - https://github.com/mozilla/application-services/issues/5246
+    data_reviews:
+      - https://github.com/mozilla/application-services/issues/5247
+      - https://github.com/mozilla/application-services/issues/5387
+      - https://github.com/mozilla/application-services/issues/5830
+    notification_emails:
+      - synced-client-integrations@mozilla.com
+      - bdk@mozilla.com
+    expires: "never"
+    data_sensitivity:
+      - technical
+
+  db_size_after_maintenance:
+    type: memory_distribution
+    description: >
+      Size of the db after executing `run_maintenance()`
+    memory_unit: kilobyte
+    bugs:
+      - https://github.com/mozilla/application-services/issues/5115
+    data_reviews:
+      - https://github.com/mozilla/application-services/issues/5122
+      - https://github.com/mozilla/application-services/issues/5387
+      - https://github.com/mozilla/application-services/issues/5830
+    notification_emails:
+      - synced-client-integrations@mozilla.com
+      - bdk@mozilla.com
+    expires: "never"
+    data_sensitivity:
+      - technical
